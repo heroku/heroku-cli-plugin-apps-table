@@ -12,16 +12,11 @@ export default class Users extends Command {
   async run() {
     const {flags} = this.parse(Users)
 
-    let path = '/users/~/apps'
-    if (flags.team) path = `/organizations/${flags.team}/apps`
-
-    let {body: apps} = await this.heroku.get<Heroku.App[]>(path)
-
-    if (flags.space) {
-      apps = apps.filter(a => a.space && (a.space.name === flags.space || a.space.id === flags.space))
-    }
-
-    const columns = {
+    let columns = {
+      id: {
+        header: 'ID',
+        extra: true,
+      },
       name: {},
       owner: {
         get: (r: Heroku.App) => r.owner && r.owner.email,
@@ -29,10 +24,38 @@ export default class Users extends Command {
       region: {
         get: (r: Heroku.App) => r.region && r.region.name,
       },
+      space: {
+        get: (r: Heroku.App) => r.space && r.space.name,
+        extra: true,
+      },
       stack: {
         get: (r: Heroku.App) => r.stack && r.stack.name,
         extra: true,
       },
+      team: {
+        get: (r: Heroku.App) => r.team && r.team.name,
+        extra: true,
+      },
+      updated_at: {
+        extra: true,
+      },
+      web_url: {
+        header: 'Url',
+        extra: true,
+      },
+    }
+
+    let path = '/users/~/apps'
+    if (flags.team) {
+      path = `/organizations/${flags.team}/apps`
+      columns.team.extra = false
+    }
+
+    let {body: apps} = await this.heroku.get<Heroku.App[]>(path)
+
+    if (flags.space) {
+      apps = apps.filter(a => a.space && (a.space.name === flags.space || a.space.id === flags.space))
+      columns.space.extra = false
     }
 
     function grabFlags() {
@@ -44,6 +67,12 @@ export default class Users extends Command {
       return f
     }
 
-    ux.table(apps, columns, {printLine: this.log, ...grabFlags()})
+    ux.table(apps,
+      columns,
+      {
+        printLine: this.log,
+        ...grabFlags()
+      }
+    )
   }
 }
